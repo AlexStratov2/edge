@@ -80,8 +80,8 @@ export default async function LeaguePage({
       {/* Standings + betting splits */}
       <section>
         <SectionTitle
-          title="TABLE · STRENGTHS · MARKET RATES"
-          hint="Attack/Defence are model strengths vs the league average (1.00). O2.5 / BTTS / CS are how often this team's games hit each market."
+          title="TABLE · STRENGTHS · HOW OFTEN IT HAPPENS"
+          hint="Attack and Defence compare a team to the league average (1.00) — higher attack is better, lower defence means fewer goals let in. O2.5 = games with 3+ goals, BTTS = both teams scored, CS = clean sheets."
         />
         <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line">
           <table className="w-full min-w-[860px] text-sm">

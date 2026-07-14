@@ -39,10 +39,10 @@ export default async function OverviewPage() {
               )}
             </h1>
             <p className="mt-3 max-w-xl text-sm text-ink-2">
-              Every upcoming fixture is run through a Dixon-Coles goal model, then compared
-              against the de-vigged market price. When our probability beats the fair price,
-              it&apos;s flagged as value. {fixtureCount} fixtures analysed across {liveLeagues}{" "}
-              live {liveLeagues === 1 ? "league" : "leagues"}.
+              We work out how likely each upcoming match is to go each way, then compare that to
+              the odds. When a result looks more likely than the price suggests, we flag it.{" "}
+              {fixtureCount} matches checked across {liveLeagues}{" "}
+              {liveLeagues === 1 ? "league" : "leagues"}.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link
@@ -68,14 +68,14 @@ export default async function OverviewPage() {
         </Card>
 
         <div className="grid grid-cols-2 gap-4">
-          <StatTile label="Value bets" value={value.length} accent="brand" sub="+2% EV or better" />
-          <StatTile label="Fixtures" value={fixtureCount} sub="next 10 days" />
-          <StatTile label="Live leagues" value={liveLeagues} sub="with upcoming games" />
+          <StatTile label="Worth a look" value={value.length} accent="brand" sub="generously priced" />
+          <StatTile label="Matches" value={fixtureCount} sub="next 10 days" />
+          <StatTile label="Live leagues" value={liveLeagues} sub="with games coming up" />
           <StatTile
-            label="Avg book margin"
+            label="Bookmaker's cut"
             value={avgMargin > 0 ? pct(avgMargin, 1) : "—"}
             accent="warn"
-            sub="the vig you beat"
+            sub="their built-in edge"
           />
         </div>
       </section>
@@ -83,8 +83,8 @@ export default async function OverviewPage() {
       {/* Top value bets */}
       <section>
         <SectionTitle
-          title="TOP OPPORTUNITIES"
-          hint="Selections where the model's probability exceeds the market's fair price, ranked by expected value."
+          title="WORTH A LOOK"
+          hint="Matches where a result looks more likely than the odds suggest — the most generously-priced first."
           right={
             value.length > 0 ? (
               <Link href="/value" className="text-xs text-brand hover:underline">
@@ -95,9 +95,9 @@ export default async function OverviewPage() {
         />
         {value.length === 0 ? (
           <Card className="p-6 text-sm text-muted">
-            No value signals in the current fixture window. This is normal in the off-season —
-            top-5 leagues repopulate in August. Meanwhile, explore league tables and team
-            strengths below.
+            Nothing generously priced in the coming days — normal during the summer break, when the
+            big leagues are off until August. In the meantime, try Replay or explore the league and
+            team pages below.
           </Card>
         ) : (
           <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line">
@@ -107,9 +107,9 @@ export default async function OverviewPage() {
                   <th className="px-3 py-2 font-medium">Match</th>
                   <th className="px-3 py-2 font-medium">Pick</th>
                   <th className="px-3 py-2 text-right font-medium">Odds</th>
-                  <th className="px-3 py-2 text-right font-medium">Model</th>
-                  <th className="px-3 py-2 text-right font-medium">Edge</th>
-                  <th className="px-3 py-2 text-right font-medium">EV</th>
+                  <th className="px-3 py-2 text-right font-medium">Our chance</th>
+                  <th className="px-3 py-2 text-right font-medium">Gap</th>
+                  <th className="px-3 py-2 text-right font-medium">Value</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,22 +167,22 @@ export default async function OverviewPage() {
 
       {/* How it works */}
       <section>
-        <SectionTitle title="HOW THE EDGE IS FOUND" />
+        <SectionTitle title="HOW IT WORKS, IN PLAIN ENGLISH" />
         <div className="grid gap-3 md:grid-cols-3">
           <Explainer
             n="1"
-            title="Model the goals"
-            body="A Dixon-Coles model learns each team's attack & defence from recent results (recency-weighted — old games and head-to-heads barely count), producing a full scoreline distribution."
+            title="Work out the chances"
+            body="We look at how each team has been scoring and defending lately (recent games count most; old games and past head-to-heads barely matter) and work out how likely each result is."
           />
           <Explainer
             n="2"
-            title="Strip the vig"
-            body="Bookmaker odds include a margin, so implied probabilities sum above 100%. We normalise them back to a fair 100% to see the book's true estimate."
+            title="See the bookmaker's real price"
+            body="Odds always include the bookmaker's cut, so we take that out to see what chance they're really giving each result."
           />
           <Explainer
             n="3"
-            title="Compare & flag"
-            body="Where the model's probability beats the fair price, expected value is positive — a value bet. Bigger, greener badges mean a bigger edge."
+            title="Spot the generous prices"
+            body="When our chance is higher than the bookmaker's, the price looks too generous — that's the flag. A bigger, greener number means a bigger gap."
           />
         </div>
       </section>

@@ -36,7 +36,7 @@ export function PredictionCard({ p, league }: { p: Prediction; league?: string }
               <ValueBadge ev={best.ev} />
             </Pill>
           ) : (
-            <Pill tone="neutral">no edge</Pill>
+            <Pill tone="neutral">fair price</Pill>
           )}
         </div>
       </div>
@@ -46,14 +46,14 @@ export function PredictionCard({ p, league }: { p: Prediction; league?: string }
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-[11px] tracked text-muted">Match result</span>
-            <span className="text-[11px] tabnum text-muted" title="Model-expected goals (home–away)">
-              Exp {one(p.expHomeGoals)}–{one(p.expAwayGoals)}
+            <span className="text-[11px] tabnum text-muted" title="Roughly how many goals we expect each side to score">
+              ≈ {one(p.expHomeGoals)}–{one(p.expAwayGoals)} goals
             </span>
           </div>
           <ProbBar home={p.pHome} draw={p.pDraw} away={p.pAway} />
           {p.elo && (
             <div className="mt-1.5 flex items-center justify-between text-[11px] tabnum text-muted">
-              <span className="tracked text-[10px]">Elo 2nd opinion</span>
+              <span className="tracked text-[10px]">Second opinion</span>
               <span>
                 {pct(p.elo.pHome, 0)} · {pct(p.elo.pDraw, 0)} · {pct(p.elo.pAway, 0)}
               </span>

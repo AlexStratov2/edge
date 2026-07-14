@@ -43,38 +43,36 @@ export default async function BacktestPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile label="Value bets graded" value={totalBets} sub="across all leagues" />
+            <StatTile label="Bets tested" value={totalBets} sub="across all leagues" />
             <StatTile
-              label="Blind ROI"
+              label="Profit"
               value={totalBets > 0 ? `${roi >= 0 ? "+" : ""}${(roi * 100).toFixed(1)}%` : "—"}
               accent={roi >= 0 ? "good" : "crit"}
-              sub="flat 1-unit stakes"
+              sub="betting 1 unit each time"
             />
             <StatTile
-              label="Model beats market"
-              value={`${beatsMarket}/${tests.length}`}
+              label="More accurate than the bookie"
+              value={`${beatsMarket} of ${tests.length}`}
               accent={beatsMarket >= tests.length / 2 ? "good" : "warn"}
-              sub="1X2 calibration (Brier)"
+              sub="leagues where our guesses were closer"
             />
             <StatTile label="Leagues tested" value={tests.length} />
           </div>
 
           <SectionTitle
-            title="PER-LEAGUE RESULTS"
-            hint="Brier score measures probability calibration (lower is better). A model Brier below the market's means our probabilities were sharper than the book's."
+            title="LEAGUE BY LEAGUE"
+            hint="For each league: how many past matches we tested, how many bets the app would have made, how many won, and the profit or loss."
           />
           <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="bg-surface-2 text-left text-[11px] tracked text-muted">
                   <th className="px-3 py-2 font-medium">League</th>
-                  <th className="px-2 py-2 text-right font-medium">Holdout</th>
+                  <th className="px-2 py-2 text-right font-medium">Matches</th>
                   <th className="px-2 py-2 text-right font-medium">Bets</th>
-                  <th className="px-2 py-2 text-right font-medium">Hit %</th>
-                  <th className="px-2 py-2 text-right font-medium">ROI</th>
-                  <th className="px-2 py-2 text-right font-medium">Brier (model)</th>
-                  <th className="px-2 py-2 text-right font-medium">Brier (market)</th>
-                  <th className="px-2 py-2 text-center font-medium">Edge</th>
+                  <th className="px-2 py-2 text-right font-medium">Won</th>
+                  <th className="px-2 py-2 text-right font-medium">Profit</th>
+                  <th className="px-2 py-2 text-center font-medium">More accurate?</th>
                 </tr>
               </thead>
               <tbody>
@@ -98,13 +96,11 @@ export default async function BacktestPage() {
                     >
                       {t.staked ? `${t.roi >= 0 ? "+" : ""}${(t.roi * 100).toFixed(1)}%` : "—"}
                     </td>
-                    <td className="px-2 py-2.5 text-right tabnum">{t.brierModel.toFixed(3)}</td>
-                    <td className="px-2 py-2.5 text-right tabnum text-muted">{t.brierMarket.toFixed(3)}</td>
                     <td className="px-2 py-2.5 text-center">
                       {t.brierModel < t.brierMarket ? (
-                        <Pill tone="good">sharper</Pill>
+                        <Pill tone="good">yes</Pill>
                       ) : (
-                        <Pill tone="neutral">market</Pill>
+                        <Pill tone="neutral">no</Pill>
                       )}
                     </td>
                   </tr>
@@ -115,7 +111,7 @@ export default async function BacktestPage() {
 
           {recent.length > 0 && (
             <>
-              <SectionTitle title="RECENTLY GRADED VALUE BETS" hint="The model's most recent flags on held-out matches, settled at closing odds." />
+              <SectionTitle title="RECENT TESTED BETS" hint="The most recent bets the app would have made on past matches, and how they turned out." />
               <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead>
@@ -125,7 +121,7 @@ export default async function BacktestPage() {
                       <th className="px-3 py-2 font-medium">Pick</th>
                       <th className="px-2 py-2 text-right font-medium">Odds</th>
                       <th className="px-2 py-2 text-center font-medium">Result</th>
-                      <th className="px-2 py-2 text-right font-medium">P/L</th>
+                      <th className="px-2 py-2 text-right font-medium">Profit</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -160,12 +156,12 @@ export default async function BacktestPage() {
 
           <Card className="p-4">
             <p className="text-xs leading-relaxed text-muted">
-              <span className="font-semibold text-ink-2">Honest caveat.</span> This is a single
-              hold-out per league on one season, at flat stakes, with no transaction costs or line
-              movement — it is a sanity check, not proof of profitability. Positive ROI here does
-              not guarantee future returns; markets adjust. The more robust signal is calibration:
-              if the model&apos;s Brier score is at or below the market&apos;s, its probabilities
-              are competitive with the book&apos;s, which is the foundation any edge is built on.
+              <span className="font-semibold text-ink-2">Be honest with yourself.</span> This is one
+              test on recent matches, betting the same small amount each time. A profit here does
+              not mean future profit — the bookmakers are very good, and beating them is hard. The
+              more encouraging sign is the last column: in the leagues marked “yes”, the app&apos;s
+              percentages were closer to what really happened than the bookmaker&apos;s were. That
+              is the foundation everything else is built on.
             </p>
           </Card>
         </>
