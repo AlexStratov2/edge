@@ -1,0 +1,52 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch: # manual "Run workflow" button
+  schedule:
+    - cron: "0 6 * * *" # rebuild daily at 06:00 UTC to refresh the data snapshot
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one deploy at a time; let a running one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build static site
+        run: npm run build
+        env:
+          # Optional keys — set these as repo Secrets to bake live odds /
+          # injuries into the daily snapshot. Blank is fine; the app degrades.
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true # turn on Pages (Actions source) on first run
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

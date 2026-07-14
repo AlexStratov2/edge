@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Dark "broadcast" theme for a football betting-stats dashboard.
+  Colour tokens come from the validated data-viz reference palette:
+  status colours carry betting meaning (good = value, critical = trap),
+  and the categorical hues label data series. Dark-first, single look.
+*/
+
+@theme {
+  /* surfaces */
+  --color-plane: #0b0d0c;
+  --color-surface: #14181a;
+  --color-surface-2: #1b2124;
+  --color-elevated: #222a2e;
+
+  /* ink */
+  --color-ink: #f4f6f5;
+  --color-ink-2: #b9c2c0;
+  --color-muted: #7d8987;
+  --color-line: #262f31;
+  --color-line-2: #313c3f;
+
+  /* brand accent — pitch green */
+  --color-brand: #2fd47a;
+  --color-brand-dim: #1f8f54;
+
+  /* status (betting semantics) */
+  --color-good: #2fd47a;
+  --color-good-ink: #071a10;
+  --color-warn: #fab219;
+  --color-serious: #ec835a;
+  --color-crit: #f0564f;
+
+  /* categorical series (from validated dark palette) */
+  --color-s1: #3987e5; /* blue - home */
+  --color-s2: #199e70; /* aqua */
+  --color-s3: #c98500; /* yellow - draw */
+  --color-s5: #9085e9; /* violet */
+  --color-s6: #e66767; /* red - away */
+  --color-s7: #d55181; /* magenta */
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius-card: 14px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  border-color: var(--color-line);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-plane);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* faint pitch-glow on the page plane */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(47, 212, 122, 0.06), transparent 60%),
+    radial-gradient(900px 400px at 0% 0%, rgba(57, 135, 229, 0.05), transparent 55%);
+}
+
+.tabnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.tracked {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-2);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
