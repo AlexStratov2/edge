@@ -35,8 +35,6 @@ jobs:
           THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true # turn on Pages (Actions source) on first run
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
