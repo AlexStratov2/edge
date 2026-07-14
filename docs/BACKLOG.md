@@ -7,6 +7,32 @@ Status key: ✅ done · 🟡 partially handled · ⬜ not started
 
 ---
 
+## Competitor to emulate — "Goals Corners Cards" (and Statmaster)
+
+The user pointed to the "Goals Corners Cards" app (Pro Soccer Stats) as the model
+to emulate on *coverage*, but dislikes its plain-table UI. Our edge is a visual,
+human-first presentation (cards, meters, %, Replay) — match their market breadth,
+beat their UX.
+
+**Their market coverage (~66 markets) — our target list:**
+- Goals: Over/Under 1.5 / 2.5 / 3.5 / 4.5; 1st-half & 2nd-half goals; late goals (75'+); BTTS
+- Corners: match Over/Under 6.5–12.5; team corners (3+…8+); both-teams corners
+- Cards/bookings: match Over/Under; team bookings; red/yellow
+- Tables, top scorers, player stats, injuries/suspensions, live odds & scores
+
+**Their (and Statmaster's) UX patterns worth borrowing:**
+- Stat *distributions by time* (goals/corners/cards by 5–10 min periods; late-goal / late-corner emphasis)
+- "Last N games" toggle (3 / 5 / 10 / 20) — the analyst wanted last-10
+- Referee booking history (ties to our cards model)
+- List builder / filters, streaks, and "system flags" for games with strong stats
+- Head-to-head summary (keep de-emphasised per analyst — low signal)
+
+**Our plan:** the Match Simulator becomes a visual "match analysis" page covering
+this full ladder (goals O/U ladder, halves, BTTS, corners, cards) as % with
+meters/bars — not a table. Data for corners (HC/AC), cards (HY/AY/HR/AR) and
+half-goals (HTHG/HTAG) is already downloaded. Replay + calibration remain our
+unique, trust-building differentiators none of these competitors have.
+
 ## Big-picture direction
 
 - ⬜ **Extend beyond football to other sports.** Long-term: cover the most-bet

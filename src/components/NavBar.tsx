@@ -7,6 +7,7 @@ import { LeagueBadge } from "@/components/LeagueBadge";
 
 const NAV = [
   { href: "/", label: "Overview" },
+  { href: "/analysis", label: "Analysis" },
   { href: "/replay", label: "Replay" },
   { href: "/value", label: "Value Bets" },
   { href: "/fixtures", label: "Fixtures" },

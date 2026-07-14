@@ -701,6 +701,131 @@ export async function getReplayFixtures(perLeague = 12): Promise<ReplayFixture[]
   return out;
 }
 
+/* ------------------------------------------------------------------ *
+ * Match Analysis: per-team goals / corners / cards rates baked for the
+ * client so the browser can compute every market for any chosen pairing.
+ * ------------------------------------------------------------------ */
+
+export interface AnalysisTeam {
+  name: string;
+  slug: string;
+  attack: number; // goal strength (fitted)
+  defense: number;
+  cfH: number; caH: number; cfA: number; caA: number; // corners for/against, home/away per game
+  kfH: number; kaH: number; kfA: number; kaA: number; // cards for/against, home/away per game
+}
+
+export interface AnalysisLeague {
+  code: string;
+  name: string;
+  season: string;
+  homeAvg: number; // goals
+  awayAvg: number;
+  cornerHomeAvg: number;
+  cornerAwayAvg: number;
+  cardHomeAvg: number;
+  cardAwayAvg: number;
+  halfGoalShare: number; // fraction of goals scored in the 1st half
+  hasCorners: boolean;
+  hasCards: boolean;
+  teams: AnalysisTeam[];
+}
+
+export async function getAnalysisData(): Promise<AnalysisLeague[]> {
+  const out: AnalysisLeague[] = [];
+  for (const cfg of LEAGUES) {
+    const { display, seasonCode } = await loadLeagueMatches(cfg.code);
+    if (display.length < 30) continue;
+    const fitted = await getFittedModel(cfg.code);
+    if (!fitted) continue;
+
+    interface Acc {
+      cfH: number; caH: number; gH: number;
+      cfA: number; caA: number; gA: number;
+      kfH: number; kaH: number; kfA: number; kaA: number;
+    }
+    const acc = new Map<string, Acc>();
+    const get = (t: string): Acc => {
+      let a = acc.get(t);
+      if (!a) { a = { cfH: 0, caH: 0, gH: 0, cfA: 0, caA: 0, gA: 0, kfH: 0, kaH: 0, kfA: 0, kaA: 0 }; acc.set(t, a); }
+      return a;
+    };
+
+    let cornerHome = 0, cornerAway = 0, cornerGames = 0;
+    let cardHome = 0, cardAway = 0, cardGames = 0;
+    let htGoals = 0, ftGoals = 0, htGames = 0;
+
+    for (const m of display) {
+      const h = get(m.homeTeam);
+      const a = get(m.awayTeam);
+      if (m.hc !== undefined && m.ac !== undefined) {
+        h.cfH += m.hc; h.caH += m.ac; h.gH += 1;
+        a.cfA += m.ac; a.caA += m.hc; a.gA += 1;
+        cornerHome += m.hc; cornerAway += m.ac; cornerGames += 1;
+      }
+      const hCards = (m.hy ?? 0) + (m.hr ?? 0);
+      const aCards = (m.ay ?? 0) + (m.ar ?? 0);
+      if (m.hy !== undefined && m.ay !== undefined) {
+        h.kfH += hCards; h.kaH += aCards;
+        a.kfA += aCards; a.kaA += hCards;
+        cardHome += hCards; cardAway += aCards; cardGames += 1;
+      }
+      if (m.hthg !== undefined && m.htag !== undefined) {
+        htGoals += m.hthg + m.htag;
+        ftGoals += m.fthg + m.ftag;
+        htGames += 1;
+      }
+    }
+
+    // per-team venue game counts for averaging (home games = times team was home)
+    const homeGames = new Map<string, number>();
+    const awayGames = new Map<string, number>();
+    for (const m of display) {
+      homeGames.set(m.homeTeam, (homeGames.get(m.homeTeam) ?? 0) + 1);
+      awayGames.set(m.awayTeam, (awayGames.get(m.awayTeam) ?? 0) + 1);
+    }
+
+    const teams: AnalysisTeam[] = [];
+    for (const [name, a] of acc) {
+      const st = fitted.strengths.get(name);
+      const hg = a.gH || 1;
+      const ag = a.gA || 1;
+      const hgc = homeGames.get(name) || 1;
+      const agc = awayGames.get(name) || 1;
+      teams.push({
+        name,
+        slug: slugifyName(name),
+        attack: st?.attack ?? 1,
+        defense: st?.defense ?? 1,
+        cfH: a.cfH / hg, caH: a.caH / hg, cfA: a.cfA / ag, caA: a.caA / ag,
+        kfH: a.kfH / hgc, kaH: a.kaH / hgc, kfA: a.kfA / agc, kaA: a.kaA / agc,
+      });
+    }
+    teams.sort((x, y) => x.name.localeCompare(y.name));
+
+    out.push({
+      code: cfg.code,
+      name: cfg.name,
+      season: seasonLabel(seasonCode),
+      homeAvg: fitted.homeAvg,
+      awayAvg: fitted.awayAvg,
+      cornerHomeAvg: cornerGames ? cornerHome / cornerGames : 0,
+      cornerAwayAvg: cornerGames ? cornerAway / cornerGames : 0,
+      cardHomeAvg: cardGames ? cardHome / cardGames : 0,
+      cardAwayAvg: cardGames ? cardAway / cardGames : 0,
+      halfGoalShare: ftGoals > 0 ? htGoals / ftGoals : 0.45,
+      hasCorners: cornerGames > 20,
+      hasCards: cardGames > 20,
+      teams,
+    });
+  }
+  return out;
+}
+
+function slugifyName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 /** All team names in a league's current display season (for static params). */
 export async function getLeagueTeams(code: string): Promise<string[]> {
   const model = await getLeagueModel(code);

@@ -17,7 +17,8 @@ async function sha256Hex(text: string): Promise<string> {
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const [ok, setOk] = useState(false);
+  // Only gate the public (production) build; never nag on local dev.
+  const [ok, setOk] = useState(() => process.env.NODE_ENV !== "production");
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
