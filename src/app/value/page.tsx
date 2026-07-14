@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { getTopValueBets } from "@/lib/model/build";
+import { getSuggestedPicks, getTopValueBets } from "@/lib/model/build";
 import { Card, Pill, SectionTitle } from "@/components/ui";
 import { ValueBadge } from "@/components/viz";
 import { LeagueBadge } from "@/components/LeagueBadge";
-import { fmtKickoff } from "@/lib/format";
+import { fmtDate, fmtKickoff } from "@/lib/format";
 import { pct } from "@/lib/model/odds";
 
 export default async function ValuePage() {
-  const value = await getTopValueBets(14);
+  const [value, picks] = await Promise.all([getTopValueBets(14), getSuggestedPicks()]);
 
   return (
     <div className="space-y-6">
@@ -77,6 +77,43 @@ export default async function ValuePage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Confident predictions (no odds needed) */}
+      {picks.length > 0 && (
+        <section>
+          <SectionTitle
+            title="MOST CONFIDENT CALLS"
+            hint="Our strongest picks for games we don't have odds on yet (e.g. Romania). These are high-probability predictions, not value-vs-price — a shortlist, never a certainty."
+          />
+          <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="bg-surface-2 text-left text-[11px] tracked text-muted">
+                  <th className="px-3 py-2 font-medium">Match</th>
+                  <th className="px-3 py-2 font-medium">Our call</th>
+                  <th className="px-3 py-2 text-right font-medium">Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {picks.slice(0, 25).map((p, i) => (
+                  <tr key={i} className="border-t border-line bg-surface hover:bg-surface-2">
+                    <td className="px-3 py-2.5">
+                      <div className="font-medium">{p.home} v {p.away}</div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted">
+                        <LeagueBadge code={p.code} size="sm" /> {p.league} · {fmtDate(new Date(`${p.date}T12:00:00Z`))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Pill tone="info">{p.market}</Pill>
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabnum font-semibold text-brand">{pct(p.prob, 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       <Card className="p-4">

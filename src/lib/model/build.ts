@@ -4,6 +4,7 @@
 
 import { loadExtraMatches, loadFixtures, loadMatches } from "@/lib/sources/footballData";
 import { EloRating, loadEloFixtures, loadEloRatings, normaliseClub } from "@/lib/sources/clubElo";
+import { hasApiFootballKey, loadApiFootballFixtures } from "@/lib/sources/apiFootball";
 import { LEAGUES, LEAGUE_BY_CODE, seasonCodes, seasonLabel } from "@/lib/leagues";
 import { expectedGoals, fitModel, FittedModel, marketProbs, sotConversion } from "@/lib/model/poisson";
 import { eloProbs, isConsensus } from "@/lib/model/elo";
@@ -326,14 +327,61 @@ export async function getUpcomingPredictions(daysAhead = 10): Promise<LeaguePred
   }
 
   const elo = await getElo().catch(() => new Map<string, EloRating>());
+  const useApiFootball = hasApiFootballKey();
+
   const out: LeaguePredictions[] = [];
   for (const cfg of LEAGUES) {
-    const fx = byLeague.get(cfg.code);
-    if (!fx || fx.length === 0) continue;
     const model = await getFittedModel(cfg.code);
     if (!model) continue;
+
+    let fx = byLeague.get(cfg.code) ?? [];
+
+    // With an API-Football key, add its fixtures+odds (covers leagues the free
+    // feed omits, e.g. Romania). Team names are matched to our model's names.
+    if (useApiFootball) {
+      const afNames = [...model.strengths.keys()];
+      const af = await loadApiFootballFixtures(cfg.code, now(), daysAhead).catch(() => [] as Fixture[]);
+      const matched: Fixture[] = [];
+      for (const f of af) {
+        const t = f.date.getTime();
+        if (t < start || t > cutoff) continue;
+        const home = matchTeamName(f.homeTeam, afNames);
+        const away = matchTeamName(f.awayTeam, afNames);
+        if (!home || !away) continue;
+        matched.push({ ...f, homeTeam: home, awayTeam: away });
+      }
+      fx = dedupeFixtures([...fx, ...matched]);
+    }
+
+    if (fx.length === 0) continue;
     const predictions = fx.map((f) => predictFixture(model, f, elo));
     out.push({ code: cfg.code, name: cfg.name, predictions });
+  }
+  return out;
+}
+
+/** Best-effort match of an external team name to one of our model's names. */
+function matchTeamName(external: string, ours: string[]): string | null {
+  const n = normaliseClub(external);
+  if (!n) return null;
+  let hit = ours.find((o) => normaliseClub(o) === n);
+  if (hit) return hit;
+  hit = ours.find((o) => {
+    const on = normaliseClub(o);
+    return on.length >= 4 && n.length >= 4 && (on.includes(n) || n.includes(on));
+  });
+  return hit ?? null;
+}
+
+function dedupeFixtures(fx: Fixture[]): Fixture[] {
+  const seen = new Set<string>();
+  const out: Fixture[] = [];
+  for (const f of fx) {
+    const day = f.date.toISOString().slice(0, 10);
+    const key = `${day}|${f.homeTeam}|${f.awayTeam}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(f);
   }
   return out;
 }
@@ -398,6 +446,47 @@ export async function getEloUpcoming(daysAhead = 12): Promise<EloUpcomingLeague[
     out.push({ code: cfg.code, name: cfg.name, fixtures: fx });
   }
   return out;
+}
+
+/**
+ * Confident picks from the prediction-only fixtures (no odds needed). Surfaces
+ * the model's strongest calls — the "Over 1.5 = 80%" style signal a human can
+ * act on even before odds exist. Ranked by confidence.
+ */
+export interface SuggestedPick {
+  code: string;
+  league: string;
+  date: string;
+  home: string;
+  away: string;
+  market: string;
+  prob: number;
+}
+
+export async function getSuggestedPicks(): Promise<SuggestedPick[]> {
+  const leagues = await getEloUpcoming(12);
+  const picks: SuggestedPick[] = [];
+  for (const lg of leagues) {
+    for (const f of lg.fixtures) {
+      const base = { code: lg.code, league: lg.name, date: f.date, home: f.home, away: f.away };
+      // strongest 1X2 side
+      const sides: [string, number][] = [
+        [`${f.home} win`, f.pHome],
+        ["Draw", f.pDraw],
+        [`${f.away} win`, f.pAway],
+      ];
+      sides.sort((a, b) => b[1] - a[1]);
+      if (sides[0][1] >= 0.55) picks.push({ ...base, market: sides[0][0], prob: sides[0][1] });
+      // goals
+      if (f.pOver25 >= 0.58) picks.push({ ...base, market: "Over 2.5 goals", prob: f.pOver25 });
+      else if (1 - f.pOver25 >= 0.6) picks.push({ ...base, market: "Under 2.5 goals", prob: 1 - f.pOver25 });
+      // btts
+      if (f.pBttsYes >= 0.6) picks.push({ ...base, market: "Both teams score", prob: f.pBttsYes });
+      else if (1 - f.pBttsYes >= 0.6) picks.push({ ...base, market: "No — a team fails to score", prob: 1 - f.pBttsYes });
+    }
+  }
+  picks.sort((a, b) => b.prob - a.prob);
+  return picks;
 }
 
 /** Flatten all detected value signals across leagues, ranked by EV. */
