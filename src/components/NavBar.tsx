@@ -7,9 +7,10 @@ import { LeagueBadge } from "@/components/LeagueBadge";
 
 const NAV = [
   { href: "/", label: "Overview" },
+  { href: "/replay", label: "Replay" },
   { href: "/value", label: "Value Bets" },
   { href: "/fixtures", label: "Fixtures" },
-  { href: "/backtest", label: "Backtest" },
+  { href: "/backtest", label: "Track record" },
 ];
 
 export function NavBar() {

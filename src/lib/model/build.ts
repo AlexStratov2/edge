@@ -8,7 +8,7 @@ import { LEAGUES, LEAGUE_BY_CODE, seasonCodes, seasonLabel } from "@/lib/leagues
 import { expectedGoals, fitModel, FittedModel, marketProbs, sotConversion } from "@/lib/model/poisson";
 import { eloProbs, isConsensus } from "@/lib/model/elo";
 import { deVig, expectedValue } from "@/lib/model/odds";
-import { Fixture, FormResult, LeagueModel, Match, Prediction, TableRow, ValueSignal } from "@/lib/types";
+import { Fixture, FormResult, LeagueModel, Match, Prediction, Result, TableRow, ValueSignal } from "@/lib/types";
 
 const MIN_EV = 0.02; // flag a selection as value at +2% expected value or better
 const CACHE_TTL_MS = 30 * 60 * 1000;
@@ -601,6 +601,104 @@ function sq(x: number): number {
 export async function getAllBacktests(): Promise<Backtest[]> {
   const results = await Promise.all(LEAGUES.map((l) => getBacktest(l.code).catch(() => null)));
   return results.filter((b): b is Backtest => b !== null);
+}
+
+/* ------------------------------------------------------------------ *
+ * Replay / Paper-Bet mode: past fixtures shown with the result hidden.
+ * A human reads the pre-match picture, places a paper bet, then reveals
+ * what actually happened. Everything is precomputed for the static site.
+ * ------------------------------------------------------------------ */
+
+function buildTeamMatches(matches: Match[], team: string): TeamMatch[] {
+  const tms: TeamMatch[] = [];
+  for (const m of matches) {
+    if (m.homeTeam === team) {
+      tms.push({
+        date: m.date, opponent: m.awayTeam, venue: "H", gf: m.fthg, ga: m.ftag,
+        result: m.ftr === "H" ? "W" : m.ftr === "A" ? "L" : "D",
+        sotFor: m.hst, sotAgainst: m.ast,
+      });
+    } else if (m.awayTeam === team) {
+      tms.push({
+        date: m.date, opponent: m.homeTeam, venue: "A", gf: m.ftag, ga: m.fthg,
+        result: m.ftr === "A" ? "W" : m.ftr === "H" ? "L" : "D",
+        sotFor: m.ast, sotAgainst: m.hst,
+      });
+    }
+  }
+  tms.sort((a, b) => b.date.getTime() - a.date.getTime());
+  return tms;
+}
+
+export interface ReplayFixture {
+  id: string;
+  code: string;
+  league: string;
+  date: string; // ISO
+  home: string;
+  away: string;
+  homeOverall: SplitStat;
+  homeHome: SplitStat;
+  awayOverall: SplitStat;
+  awayAway: SplitStat;
+  model: { pHome: number; pDraw: number; pAway: number; pOver25: number; pBttsYes: number };
+  odds: { h?: number; d?: number; a?: number; over25?: number; under25?: number };
+  result: { fthg: number; ftag: number; ftr: Result; over25: boolean; btts: boolean };
+}
+
+/**
+ * Precompute a pool of recent past fixtures for the Replay game. For each league
+ * we hold out the last `perLeague` priced matches, fit the model on the earlier
+ * games only, and capture each match's pre-match splits, model probs, the odds
+ * offered, and the (hidden) result.
+ */
+export async function getReplayFixtures(perLeague = 12): Promise<ReplayFixture[]> {
+  const out: ReplayFixture[] = [];
+  for (const cfg of LEAGUES) {
+    const { display } = await loadLeagueMatches(cfg.code);
+    const conv = sotConversion(display);
+    const priced = display
+      .filter((m) => m.oddsH && m.oddsD && m.oddsA)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    if (priced.length < 60) continue;
+
+    const windowStart = priced.length - perLeague;
+    const train = priced.slice(0, windowStart);
+    const model = fitModel(train, priced[windowStart].date);
+
+    for (const m of priced.slice(windowStart)) {
+      const before = display.filter((x) => x.date.getTime() < m.date.getTime());
+      const homeTMs = buildTeamMatches(before, m.homeTeam);
+      const awayTMs = buildTeamMatches(before, m.awayTeam);
+      if (homeTMs.length < 4 || awayTMs.length < 4) continue;
+
+      const pred = predictFixture(model, matchToFixture(m));
+      out.push({
+        id: `${cfg.code}-${m.date.getTime()}-${m.homeTeam}`.replace(/\s+/g, "_"),
+        code: cfg.code,
+        league: cfg.name,
+        date: m.date.toISOString(),
+        home: m.homeTeam,
+        away: m.awayTeam,
+        homeOverall: splitFrom(homeTMs.slice(0, 10), conv),
+        homeHome: splitFrom(homeTMs.filter((t) => t.venue === "H").slice(0, 10), conv),
+        awayOverall: splitFrom(awayTMs.slice(0, 10), conv),
+        awayAway: splitFrom(awayTMs.filter((t) => t.venue === "A").slice(0, 10), conv),
+        model: {
+          pHome: pred.pHome, pDraw: pred.pDraw, pAway: pred.pAway,
+          pOver25: pred.pOver25, pBttsYes: pred.pBttsYes,
+        },
+        odds: {
+          h: m.oddsH, d: m.oddsD, a: m.oddsA, over25: m.over25, under25: m.under25,
+        },
+        result: {
+          fthg: m.fthg, ftag: m.ftag, ftr: m.ftr,
+          over25: m.fthg + m.ftag > 2.5, btts: m.fthg > 0 && m.ftag > 0,
+        },
+      });
+    }
+  }
+  return out;
 }
 
 /** All team names in a league's current display season (for static params). */

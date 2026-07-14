@@ -36,6 +36,24 @@ The analyst wants the product split into a **prematch zone** and a **live zone**
   home/away windows to match the analyst's basis exactly.
 - ⬜ **Live zone (real-time).** In-play markets and live xG — explicitly deferred.
 
+## Replay / Paper-Bet mode (user's vision — high priority)
+
+The user wants a human-in-the-loop version of the backtest: **pick a past match,
+show only the pre-match stats/predictions (result hidden), let the friend draw
+conclusions and place a paper bet, then reveal how the match actually went** and
+whether the call won. This is the convincing, interactive counterpart to the
+automated backtest — it lets the friend test his own judgement against reality
+and build trust in the numbers.
+
+- ⬜ **Build `/replay`:** random or chosen past fixture → pre-match panel (last-10
+  home/away/overall, model probs, market odds, xG proxy) with the score hidden →
+  user picks a market → "Reveal" shows the real result + grades the pick → keep a
+  running paper-bet record (hit-rate / P&L). Works on the static site with baked
+  match data + client-side interactivity.
+- Distinguish from the existing **Backtest** page, which auto-grades the *model's*
+  value flags across a season (not human-driven). Both are useful; the Replay is
+  the one that convinces a skeptical human.
+
 ## Convincing the analyst — calibration & trusted markets
 
 The analyst was sold by a (now-defunct) platform that showed **Over 1.5 goals**

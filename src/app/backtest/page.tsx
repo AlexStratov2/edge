@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getAllBacktests } from "@/lib/model/build";
 import { Card, Pill, SectionTitle, StatTile } from "@/components/ui";
 import { LeagueBadge } from "@/components/LeagueBadge";
@@ -21,13 +22,16 @@ export default async function BacktestPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Backtest</h1>
+        <h1 className="text-2xl font-semibold">Track record</h1>
         <p className="mt-1 max-w-2xl text-sm text-ink-2">
-          Does the engine actually find an edge? Each league is split into a training slice and a
-          held-out recent slice (no lookahead). The model flags value on the holdout using the{" "}
-          <span className="text-ink">actual closing odds</span> that were offered, then we grade
-          every flag against the real result. Beating closing odds is the hardest test in betting —
-          treat these as a sober reality check.
+          Can you trust the numbers? This is the honesty page. We take past matches the model never
+          learned from, let it pick the bets it thinks are worth it against the{" "}
+          <span className="text-ink">real odds that were offered</span>, and check every pick against
+          what actually happened. Beating the bookmaker&apos;s closing price is the hardest test in
+          betting, so read this as a sober reality check — not a promise.{" "}
+          <Link href="/replay" className="text-brand hover:underline">
+            Want to test your own read instead? Try Replay →
+          </Link>
         </p>
       </div>
 
