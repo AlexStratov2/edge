@@ -9,6 +9,7 @@ export type FormResult = "W" | "D" | "L";
 /** A single played match with results, match stats and (optional) odds. */
 export interface Match {
   div: string;
+  season?: string; // e.g. "2025/2026" (extra-league files carry all seasons)
   date: Date;
   homeTeam: string;
   awayTeam: string;

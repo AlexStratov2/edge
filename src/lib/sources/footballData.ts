@@ -79,6 +79,48 @@ export async function loadMatches(div: string, seasons: string[]): Promise<Match
   return all;
 }
 
+/**
+ * Load matches from Football-Data's single-file "extra league" format
+ * (new/{code}.csv), e.g. Romania. These carry all seasons in one file and only
+ * results plus basic 1X2 closing odds — no corners, cards, shots or over/under.
+ */
+export async function loadExtraMatches(code: string): Promise<Match[]> {
+  const url = `${BASE}/new/${code}.csv`;
+  let text: string;
+  try {
+    text = await fetchTextCached(url, { ttlMs: HISTORY_TTL });
+  } catch {
+    return [];
+  }
+  const rows = parseCsv(text);
+  const out: Match[] = [];
+  for (const row of rows) {
+    const date = parseFdDate(row["Date"]);
+    const home = row["Home"];
+    const away = row["Away"];
+    const hg = num(row["HG"]);
+    const ag = num(row["AG"]);
+    const res = row["Res"] as Result;
+    if (!date || !home || !away || hg === undefined || ag === undefined) continue;
+    if (res !== "H" && res !== "D" && res !== "A") continue;
+    out.push({
+      div: code,
+      season: row["Season"] || undefined,
+      date,
+      homeTeam: home,
+      awayTeam: away,
+      fthg: hg,
+      ftag: ag,
+      ftr: res,
+      oddsH: pickOdds(row, ["AvgCH", "B365CH", "PSCH"]),
+      oddsD: pickOdds(row, ["AvgCD", "B365CD", "PSCD"]),
+      oddsA: pickOdds(row, ["AvgCA", "B365CA", "PSCA"]),
+    });
+  }
+  out.sort((a, b) => a.date.getTime() - b.date.getTime());
+  return out;
+}
+
 function rowToFixture(row: CsvRow): Fixture | null {
   const date = parseFdDate(row["Date"]);
   const home = row["HomeTeam"];

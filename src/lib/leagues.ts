@@ -9,6 +9,9 @@ export interface LeagueConfig {
   tier: 1 | 2;
   short: string; // 2-letter badge label (renders everywhere, unlike flag emoji)
   accent: string; // hex accent used in the UI header/badge
+  // "Extra" leagues use Football-Data's single-file format at new/{extra}.csv
+  // (results + basic 1X2 odds only — no corners/cards/shots). Set to the file code.
+  extra?: string;
 }
 
 export const LEAGUES: LeagueConfig[] = [
@@ -22,6 +25,7 @@ export const LEAGUES: LeagueConfig[] = [
   { code: "P1", name: "Primeira Liga", country: "Portugal", eloCountry: "POR", tier: 2, short: "PT", accent: "#008300" },
   { code: "B1", name: "Jupiler Pro League", country: "Belgium", eloCountry: "BEL", tier: 2, short: "BE", accent: "#e87ba4" },
   { code: "SP2", name: "La Liga 2", country: "Spain", eloCountry: "ESP", tier: 2, short: "E2", accent: "#c98500" },
+  { code: "ROU", name: "Superliga", country: "Romania", eloCountry: "ROU", tier: 2, short: "RO", accent: "#d55181", extra: "ROU" },
 ];
 
 export const LEAGUE_BY_CODE = new Map(LEAGUES.map((l) => [l.code, l]));
@@ -49,8 +53,12 @@ function pad(n: number): string {
   return v.toString().padStart(2, "0");
 }
 
-/** Human label for a season code like "2526" -> "2025/26". */
+/** Human label for a season code like "2526" -> "2025/26" (or pass "2025/2026"). */
 export function seasonLabel(code: string): string {
+  if (code.includes("/")) {
+    const [a, b] = code.split("/");
+    return `${a}/${b.slice(-2)}`; // 2025/2026 -> 2025/26
+  }
   const a = code.slice(0, 2);
   const b = code.slice(2, 4);
   return `20${a}/${b}`;

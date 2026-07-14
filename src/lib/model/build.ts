@@ -2,7 +2,7 @@
 // produce value-ranked predictions. Results are memoised per process so a page
 // render does not refit every league on each request.
 
-import { loadFixtures, loadMatches } from "@/lib/sources/footballData";
+import { loadExtraMatches, loadFixtures, loadMatches } from "@/lib/sources/footballData";
 import { EloRating, loadEloRatings, normaliseClub } from "@/lib/sources/clubElo";
 import { LEAGUES, LEAGUE_BY_CODE, seasonCodes, seasonLabel } from "@/lib/leagues";
 import { expectedGoals, fitModel, FittedModel, marketProbs, sotConversion } from "@/lib/model/poisson";
@@ -38,6 +38,19 @@ async function loadLeagueMatches(code: string): Promise<{
   display: Match[];
   seasonCode: string;
 }> {
+  // Extra-league single-file format (e.g. Romania): all seasons in one file.
+  const cfg = LEAGUE_BY_CODE.get(code);
+  if (cfg?.extra) {
+    const all = await loadExtraMatches(cfg.extra);
+    const seasons = [...new Set(all.map((m) => m.season).filter(Boolean))].sort() as string[];
+    if (seasons.length === 0) return { training: [], display: [], seasonCode: "" };
+    const latest = seasons[seasons.length - 1];
+    const trainSeasons = seasons.slice(-3);
+    const training = all.filter((m) => m.season && trainSeasons.includes(m.season));
+    const display = all.filter((m) => m.season === latest);
+    return { training, display, seasonCode: latest };
+  }
+
   const seasons = seasonCodes(now());
   const perSeason = await Promise.all(seasons.map((s) => loadMatches(code, [s])));
   const training = perSeason.flat();
