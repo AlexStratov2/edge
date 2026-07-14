@@ -3,7 +3,7 @@
 // render does not refit every league on each request.
 
 import { loadExtraMatches, loadFixtures, loadMatches } from "@/lib/sources/footballData";
-import { EloRating, loadEloRatings, normaliseClub } from "@/lib/sources/clubElo";
+import { EloRating, loadEloFixtures, loadEloRatings, normaliseClub } from "@/lib/sources/clubElo";
 import { LEAGUES, LEAGUE_BY_CODE, seasonCodes, seasonLabel } from "@/lib/leagues";
 import { expectedGoals, fitModel, FittedModel, marketProbs, sotConversion } from "@/lib/model/poisson";
 import { eloProbs, isConsensus } from "@/lib/model/elo";
@@ -334,6 +334,68 @@ export async function getUpcomingPredictions(daysAhead = 10): Promise<LeaguePred
     if (!model) continue;
     const predictions = fx.map((f) => predictFixture(model, f, elo));
     out.push({ code: cfg.code, name: cfg.name, predictions });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * Upcoming predictions WITHOUT odds, from ClubElo's fixtures feed. Covers
+ * in-season leagues (e.g. Romania) that Football-Data's odds feed omits, so
+ * they show a prediction — but no value flag (we have no price to compare).
+ * ------------------------------------------------------------------ */
+
+export interface EloUpcoming {
+  date: string;
+  home: string;
+  away: string;
+  pHome: number;
+  pDraw: number;
+  pAway: number;
+  pOver25: number;
+  pBttsYes: number;
+}
+
+export interface EloUpcomingLeague {
+  code: string;
+  name: string;
+  fixtures: EloUpcoming[];
+}
+
+// ClubElo's fixtures feed uses some country codes that differ from its ratings.
+const ELO_COUNTRY_ALIAS: Record<string, string> = { ROM: "ROU" };
+
+export async function getEloUpcoming(daysAhead = 12): Promise<EloUpcomingLeague[]> {
+  // Map ClubElo country -> our (top) league for that country.
+  const countryToLeague = new Map<string, string>();
+  for (const l of LEAGUES) {
+    if (l.eloCountry && !countryToLeague.has(l.eloCountry)) countryToLeague.set(l.eloCountry, l.code);
+  }
+
+  const fixtures = await loadEloFixtures().catch(() => []);
+  const start = now().getTime() - 12 * 3600 * 1000;
+  const cutoff = now().getTime() + daysAhead * 86_400_000;
+
+  const byLeague = new Map<string, EloUpcoming[]>();
+  for (const f of fixtures) {
+    const code = countryToLeague.get(ELO_COUNTRY_ALIAS[f.country] ?? f.country);
+    if (!code) continue; // not one of our leagues (also excludes European cups)
+    const t = Date.parse(`${f.date}T12:00:00Z`);
+    if (Number.isNaN(t) || t < start || t > cutoff) continue;
+    const arr = byLeague.get(code) ?? [];
+    arr.push({
+      date: f.date, home: f.home, away: f.away,
+      pHome: f.pHome, pDraw: f.pDraw, pAway: f.pAway,
+      pOver25: f.pOver25, pBttsYes: f.pBttsYes,
+    });
+    byLeague.set(code, arr);
+  }
+
+  const out: EloUpcomingLeague[] = [];
+  for (const cfg of LEAGUES) {
+    const fx = byLeague.get(cfg.code);
+    if (!fx || fx.length === 0) continue;
+    fx.sort((a, b) => a.date.localeCompare(b.date));
+    out.push({ code: cfg.code, name: cfg.name, fixtures: fx });
   }
   return out;
 }

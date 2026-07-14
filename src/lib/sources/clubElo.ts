@@ -46,6 +46,8 @@ export interface EloFixture {
   pHome: number;
   pDraw: number;
   pAway: number;
+  pOver25: number;
+  pBttsYes: number;
 }
 
 /** Upcoming fixtures with ClubElo's own 1X2 probabilities (from the GD split). */
@@ -83,6 +85,15 @@ function eloRowToFixture(row: CsvRow): EloFixture | null {
   }
   const total = pHome + pDraw + pAway;
   if (total <= 0) return null;
+
+  // Over/Under 2.5 and BTTS from the exact scoreline (R:x-y) columns. Under 2.5
+  // and "no BTTS" are fully covered by the low-score columns, so these are exact.
+  const r = (k: string) => num(row[k]) ?? 0;
+  const under25 = r("R:0-0") + r("R:0-1") + r("R:1-0") + r("R:0-2") + r("R:1-1") + r("R:2-0");
+  const bttsNo =
+    r("R:0-0") + r("R:0-1") + r("R:0-2") + r("R:0-3") + r("R:0-4") + r("R:0-5") + r("R:0-6") +
+    r("R:1-0") + r("R:2-0") + r("R:3-0") + r("R:4-0") + r("R:5-0") + r("R:6-0");
+
   return {
     date: row["Date"] ?? "",
     country: row["Country"] ?? "",
@@ -91,7 +102,13 @@ function eloRowToFixture(row: CsvRow): EloFixture | null {
     pHome: pHome / total,
     pDraw: pDraw / total,
     pAway: pAway / total,
+    pOver25: clamp01(1 - under25),
+    pBttsYes: clamp01(1 - bttsNo),
   };
+}
+
+function clamp01(x: number): number {
+  return Math.max(0, Math.min(1, x));
 }
 
 /** Normalise a club name so ClubElo and Football-Data spellings line up better. */
